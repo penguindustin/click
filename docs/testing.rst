@@ -24,17 +24,24 @@ data, exit code, and optional exception attached.
 
 Example::
 
+    # example.py
     import click
+
+    @click.command()
+    @click.argument('name')
+    def hello(name):
+        click.echo('Hello %s!' % name)
+
+Associated test(using pytest)::
+
+    # test_hello.py
     from click.testing import CliRunner
 
     def test_hello_world():
-        @click.command()
-        @click.argument('name')
-        def hello(name):
-            click.echo('Hello %s!' % name)
+        import example
 
         runner = CliRunner()
-        result = runner.invoke(hello, ['Peter'])
+        result = runner.invoke(example.hello, ['Peter'])
         assert result.exit_code == 0
         assert result.output == 'Hello Peter!\n'
 
@@ -42,21 +49,28 @@ For subcommand testing, a subcommand name must be specified in the `args` parame
 
 Example::
 
+    # example.py
     import click
+    
+    @click.group()
+    @click.option('--debug/--no-debug', default=False)
+    def cli(debug):
+        click.echo('Debug mode is %s' % ('on' if debug else 'off'))
+
+    @cli.command()
+    def sync():
+        click.echo('Syncing')
+
+Associated test(using pytest)::
+
+    # test_cli.py
     from click.testing import CliRunner
-    
+
     def test_sync():
-        @click.group()
-        @click.option('--debug/--no-debug', default=False)
-        def cli(debug):
-            click.echo('Debug mode is %s' % ('on' if debug else 'off')) 
-    
-        @cli.command()
-        def sync():
-            click.echo('Syncing')
-    
+        import example
+
         runner = CliRunner()
-        result = runner.invoke(cli, ['--debug', 'sync'])
+        result = runner.invoke(example.cli, ['--debug', 'sync'])
         assert result.exit_code == 0
         assert 'Debug mode is on' in result.output
         assert 'Syncing' in result.output
@@ -64,7 +78,7 @@ Example::
 Additional keyword arguments passed to ``.invoke()`` will be used to construct the initial Context object. For example, if you want to run your tests against a fixed terminal width you can use the following::
 
     runner = CliRunner()
-    result = runner.invoke(cli, ['--debug', 'sync'], terminal_width=60)
+    result = runner.invoke(example.cli, ['--debug', 'sync'], terminal_width=60)
 
 File System Isolation
 ---------------------
@@ -75,23 +89,31 @@ an empty folder and changes the current working directory to.
 
 Example::
 
+    # example.py
     import click
+
+    @click.command()
+    @click.argument('f', type=click.File())
+    def cat(f):
+        click.echo(f.read())
+
+Associated test (using pytest)::
+
+    # test_cat.py
     from click.testing import CliRunner
 
     def test_cat():
-        @click.command()
-        @click.argument('f', type=click.File())
-        def cat(f):
-            click.echo(f.read())
+        import example
 
         runner = CliRunner()
         with runner.isolated_filesystem():
             with open('hello.txt', 'w') as f:
                 f.write('Hello World!')
 
-            result = runner.invoke(cat, ['hello.txt'])
+            result = runner.invoke(example.cat, ['hello.txt'])
             assert result.exit_code == 0
             assert result.output == 'Hello World!\n'
+
 
 Input Streams
 -------------
@@ -99,17 +121,24 @@ Input Streams
 The test wrapper can also be used to provide input data for the input
 stream (stdin).  This is very useful for testing prompts, for instance::
 
+    # example.py
     import click
+
+    @click.command()
+    @click.option('--foo', prompt=True)
+    def bar(foo):
+        click.echo('foo=%s' % foo)
+
+Associated test (using pytest)::
+
+    # test_bar.py
     from click.testing import CliRunner
 
     def test_prompts():
-        @click.command()
-        @click.option('--foo', prompt=True)
-        def test(foo):
-            click.echo('foo=%s' % foo)
+        import example
 
         runner = CliRunner()
-        result = runner.invoke(test, input='wau wau\n')
+        result = runner.invoke(example.bar, input='wau wau\n')
         assert not result.exception
         assert result.output == 'Foo: wau wau\nfoo=wau wau\n'
 
